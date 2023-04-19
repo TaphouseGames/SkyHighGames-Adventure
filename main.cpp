@@ -3,7 +3,8 @@
 #include <map>
 #include <functional>
 #include <cstring>
-#include "Act1.h"
+#include "game.h"
+#include "player.h"
 
 using std::cout;
 using std::cin;
@@ -12,41 +13,64 @@ using std::endl;
 using std::function;
 using std::map;
 
-map<string, function<void(string&)>> inputHandlers;
-function<void(string&)> currentLevelHandler;
+const int HINT_POINT_PENALTY = 2;
+const int UNRECOGNIZED_POINT_PENALTY = 1;
+
+map<string, function<void()>> inputHandlers;
+function<void(Player&)> currentLevelHandler;
+
+Player player;
+
+
+void updateInputHandlers();
+void getUserInput();
+
 
 int main() {
-    string playerName;
+    intro(player);
 
-    cout << inputHandlers.size() << endl;
-    intro(playerName);
+    while (currentLevelHandler) {
+        updateInputHandlers();
+        currentLevelHandler(player);
+        getUserInput();
+    }
 
-    inputHandlers["hint"] = [](string& playerName) {
+    return 0;
+}
+
+void updateInputHandlers() {
+    inputHandlers.clear();
+
+    inputHandlers["hint"] = []() {
+        player.points -= HINT_POINT_PENALTY;
+        cout << "Losing " << HINT_POINT_PENALTY << " points for using a hint." << endl;
         cout << endl << "Try using one of these words: " << endl << endl;
         for (const auto &command: inputHandlers) {
             cout << command.first << endl;
         }
     };
 
-    while (currentLevelHandler) {
-        currentLevelHandler(playerName);
+    inputHandlers["exit"] = []() {
+        exit(0);
+    };
+}
 
-        string userInput;
-        getline(cin, userInput);
+void getUserInput() {
+    string userInput;
+    getline(cin, userInput);
 
-        for (const auto &command: inputHandlers) {
-            if (strstr(userInput.c_str(),command.first.c_str())) {
-                userInput = command.first;
-                break;
-            }
-        }
-
-        if (inputHandlers.find(userInput) != inputHandlers.end()) {
-            inputHandlers[userInput](playerName);
-        } else {
-            cout << "Sorry I did not recognized that command, type 'hint' for a list of recognized keywords" << endl << endl;
+    for (const auto &command: inputHandlers) {
+        if (strstr(userInput.c_str(),command.first.c_str())) {
+            userInput = command.first;
+            break;
         }
     }
 
-    return 0;
+    if (inputHandlers.find(userInput) != inputHandlers.end()) {
+        inputHandlers[userInput]();
+    } else {
+        player.points -= UNRECOGNIZED_POINT_PENALTY;
+        cout << "Losing " << UNRECOGNIZED_POINT_PENALTY << " points for an unrecognized input." << endl;
+        cout << "Sorry I did not recognized that input, type 'hint' for a list of recognized keywords" << endl << endl;
+    }
 }
